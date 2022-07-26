@@ -36,7 +36,7 @@ public class FormTest {
         Date date = calendar.getTime();
         SimpleDateFormat formatter = new SimpleDateFormat("dd.MM.yyyy");
         String dateString = formatter.format(date);
-        clearDateField();
+        //clearDateField();
         $("[data-test-id=\"date\"] span span input").sendKeys(dateString);
     }
 
