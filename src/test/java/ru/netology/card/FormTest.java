@@ -1,14 +1,13 @@
 package ru.netology.card;
 
+import com.codeborne.selenide.Condition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Keys;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.Duration;
-import java.util.Calendar;
-import java.util.Date;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 import static com.codeborne.selenide.Selenide.*;
 import static com.codeborne.selenide.Condition.*;
@@ -19,152 +18,132 @@ public class FormTest {
         open("http://localhost:9999/");
     }
 
-    public void clearDateField() {
-        //chromium bug workaround
-        for (int i = 0; i < 9; i++) {
-            $("[data-test-id=\"date\"] span span input").sendKeys(Keys.BACK_SPACE);
-        }
-    }
-
-    public void enterValidCity() {
-        $("[data-test-id=\"city\"] span span input").sendKeys("Москва");
-    }
-
-    public void enterValidDate() {
-        Calendar calendar = Calendar.getInstance();
-        calendar.add(Calendar.DATE, 3);
-        Date date = calendar.getTime();
-        SimpleDateFormat formatter = new SimpleDateFormat("dd.MM.yyyy");
-        String dateString = formatter.format(date);
-        clearDateField();
-        $("[data-test-id=\"date\"] span span input").sendKeys(dateString);
-    }
-
-    public void enterValidName() {
-        $("[data-test-id=\"name\"] span span input").sendKeys("Иванов Иван");
+    public String generateDate(int days) {
+        return LocalDate.now().plusDays(days).format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
     }
 
     public void enterValidPhone() {
         $("[data-test-id=\"phone\"] span span input").sendKeys("+79991234567");
     }
 
-    public void clickAgreement() {
-        $("[data-test-id=\"agreement\"]").click();
-    }
-
-    public void clickSubmit() {
-        $x("//*[contains(text(),'Забронировать')]").click();
-    }
-
     @Test
-    public void criticalPath() throws ParseException {
-        enterValidCity();
-        enterValidDate();
-        enterValidName();
+    public void criticalPath() {
+        $("[data-test-id=\"city\"] input").sendKeys("Москва");
+        $("[data-test-id='date'] input").sendKeys(Keys.chord(Keys.SHIFT, Keys.HOME), Keys.BACK_SPACE);
+        String planningDate = generateDate(3);
+        $("[data-test-id=\"date\"] input").sendKeys(planningDate);
+        $("[data-test-id=\"name\"] input").sendKeys("Иванов Иван");
         enterValidPhone();
-        clickAgreement();
-        clickSubmit();
-        $x("//div[@data-test-id=\"notification\"]/div[contains(text(),\"Успешно!\")]").shouldBe(
-                visible,
-                Duration.ofSeconds(15)
-        );
+        $("[data-test-id=\"agreement\"]").click();
+        $x("//*[contains(text(),'Забронировать')]").click();
+        $(".notification__content")
+                .shouldHave(Condition.text("Встреча успешно забронирована на " + planningDate), Duration.ofSeconds(15))
+                .shouldBe(Condition.visible);
     }
 
     @Test
     public void wrongCity() {
-        $("[data-test-id=\"city\"] span span input").sendKeys("Неизвестность");
-        enterValidDate();
-        enterValidName();
+        $("[data-test-id=\"city\"] input").sendKeys("Неизвестность");
+        $("[data-test-id='date'] input").sendKeys(Keys.chord(Keys.SHIFT, Keys.HOME), Keys.BACK_SPACE);
+        String planningDate = generateDate(3);
+        $("[data-test-id=\"date\"] input").sendKeys(planningDate);
+        $("[data-test-id=\"name\"] input").sendKeys("Иванов Иван");
         enterValidPhone();
-        clickAgreement();
-        clickSubmit();
+        $("[data-test-id=\"agreement\"]").click();
+        $x("//*[contains(text(),'Забронировать')]").click();
         $x("//*[contains(text(),'Доставка в выбранный город недоступна')]").shouldBe(visible);
     }
 
     @Test
     public void tooEarly() {
-        enterValidCity();
-        Calendar calendar = Calendar.getInstance();
-        calendar.add(Calendar.DATE, 2);
-        Date date = calendar.getTime();
-        SimpleDateFormat formatter = new SimpleDateFormat("dd.MM.yyyy");
-        String dateString = formatter.format(date);
-        clearDateField();
-        $("[data-test-id=\"date\"] span span input").sendKeys(dateString);
-        enterValidName();
+        $("[data-test-id=\"city\"] input").sendKeys("Москва");
+        $("[data-test-id='date'] input").sendKeys(Keys.chord(Keys.SHIFT, Keys.HOME), Keys.BACK_SPACE);
+        String planningDate = generateDate(2);
+        $("[data-test-id=\"date\"] input").sendKeys(planningDate);
+        $("[data-test-id=\"date\"] input").sendKeys(planningDate);
+        $("[data-test-id=\"name\"] input").sendKeys("Иванов Иван");
         enterValidPhone();
-        clickAgreement();
-        clickSubmit();
+        $("[data-test-id=\"agreement\"]").click();
+        $x("//*[contains(text(),'Забронировать')]").click();
         $x("//*[contains(text(),'Заказ на выбранную дату невозможен')]").shouldBe(visible);
     }
 
     @Test
     public void wrongDate() {
-        enterValidCity();
-        clearDateField();
-        $("[data-test-id=\"date\"] span span input").sendKeys("33.33.3333");
-        enterValidName();
+        $("[data-test-id=\"city\"] input").sendKeys("Москва");
+        $("[data-test-id='date'] input").sendKeys(Keys.chord(Keys.SHIFT, Keys.HOME), Keys.BACK_SPACE);
+        $("[data-test-id=\"date\"] input").sendKeys("33.33.3333");
+        $("[data-test-id=\"name\"] input").sendKeys("Иванов Иван");
         enterValidPhone();
-        clickAgreement();
-        clickSubmit();
+        $("[data-test-id=\"agreement\"]").click();
+        $x("//*[contains(text(),'Забронировать')]").click();
         $x("//*[contains(text(),'Неверно введена дата')]").shouldBe(visible);
     }
 
     @Test
     public void positiveNameMinus() {
-        enterValidCity();
-        enterValidDate();
-        $("[data-test-id=\"name\"] span span input").sendKeys("Мак-Кинли Иван");
+        $("[data-test-id=\"city\"] input").sendKeys("Москва");
+        $("[data-test-id='date'] input").sendKeys(Keys.chord(Keys.SHIFT, Keys.HOME), Keys.BACK_SPACE);
+        String planningDate = generateDate(3);
+        $("[data-test-id=\"date\"] input").sendKeys(planningDate);
+        $("[data-test-id=\"name\"] input").sendKeys("Мак-Кинли Иван");
         enterValidPhone();
-        clickAgreement();
-        clickSubmit();
-        $x("//div[@data-test-id=\"notification\"]/div[contains(text(),\"Успешно!\")]").shouldBe(
-                visible,
-                Duration.ofSeconds(15)
-        );
+        $("[data-test-id=\"agreement\"]").click();
+        $x("//*[contains(text(),'Забронировать')]").click();
+        $(".notification__content")
+                .shouldHave(Condition.text("Встреча успешно забронирована на " + planningDate), Duration.ofSeconds(15))
+                .shouldBe(Condition.visible);
     }
 
     @Test
     public void wrongName() {
-        enterValidCity();
-        enterValidDate();
-        $("[data-test-id=\"name\"] span span input").sendKeys("Qwerty John");
+        $("[data-test-id=\"city\"] input").sendKeys("Москва");
+        $("[data-test-id='date'] input").sendKeys(Keys.chord(Keys.SHIFT, Keys.HOME), Keys.BACK_SPACE);
+        String planningDate = generateDate(3);
+        $("[data-test-id=\"date\"] input").sendKeys(planningDate);
+        $("[data-test-id=\"name\"] input").sendKeys("Qwerty John");
         enterValidPhone();
-        clickAgreement();
-        clickSubmit();
+        $("[data-test-id=\"agreement\"]").click();
+        $x("//*[contains(text(),'Забронировать')]").click();
         $x("//*[contains(text(),'Имя и Фамилия указаные неверно')]").shouldBe(visible);
     }
 
     @Test
     public void phoneTooShort() {
-        enterValidCity();
-        enterValidDate();
-        enterValidName();
-        $("[data-test-id=\"phone\"] span span input").sendKeys("+7999123456");
-        clickAgreement();
-        clickSubmit();
+        $("[data-test-id=\"city\"] input").sendKeys("Москва");
+        $("[data-test-id='date'] input").sendKeys(Keys.chord(Keys.SHIFT, Keys.HOME), Keys.BACK_SPACE);
+        String planningDate = generateDate(3);
+        $("[data-test-id=\"date\"] input").sendKeys(planningDate);
+        $("[data-test-id=\"name\"] input").sendKeys("Иванов Иван");
+        $("[data-test-id=\"phone\"] input").sendKeys("+7999123456");
+        $("[data-test-id=\"agreement\"]").click();
+        $x("//*[contains(text(),'Забронировать')]").click();
         $x("//*[contains(text(),'Телефон указан неверно. Должно быть 11 цифр')]").shouldBe(visible);
     }
 
     @Test
     public void phoneMissPlacedPlus() {
-        enterValidCity();
-        enterValidDate();
-        enterValidName();
-        $("[data-test-id=\"phone\"] span span input").sendKeys("7+9991234567");
-        clickAgreement();
-        clickSubmit();
+        $("[data-test-id=\"city\"] input").sendKeys("Москва");
+        $("[data-test-id='date'] input").sendKeys(Keys.chord(Keys.SHIFT, Keys.HOME), Keys.BACK_SPACE);
+        String planningDate = generateDate(3);
+        $("[data-test-id=\"date\"] input").sendKeys(planningDate);
+        $("[data-test-id=\"name\"] input").sendKeys("Иванов Иван");
+        $("[data-test-id=\"phone\"] input").sendKeys("7+9991234567");
+        $("[data-test-id=\"agreement\"]").click();
+        $x("//*[contains(text(),'Забронировать')]").click();
         $x("//*[contains(text(),'Телефон указан неверно.')]").shouldBe(visible);
     }
 
     @Test
     public void noAgreement() {
         String fullCLass = "checkbox checkbox_size_m checkbox_theme_alfa-on-white input_invalid";
-        enterValidCity();
-        enterValidDate();
-        enterValidName();
+        $("[data-test-id=\"city\"] input").sendKeys("Москва");
+        $("[data-test-id='date'] input").sendKeys(Keys.chord(Keys.SHIFT, Keys.HOME), Keys.BACK_SPACE);
+        String planningDate = generateDate(3);
+        $("[data-test-id=\"date\"] input").sendKeys(planningDate);
+        $("[data-test-id=\"name\"] input").sendKeys("Иванов Иван");
         enterValidPhone();
-        clickSubmit();
+        $x("//*[contains(text(),'Забронировать')]").click();
         $("[data-test-id=\"agreement\"]").shouldHave(
                 attribute("class", fullCLass)
         );
